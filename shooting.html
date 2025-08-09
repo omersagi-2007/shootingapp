@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>אימון קליעות לסל – מעקב עם גרפי שיפור</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root{ --bg:#0f172a; --panel:#111827; --muted:#1f2937; --text:#e5e7eb; --sub:#94a3b8; --acc:#22d3ee; --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(160deg,#0b1224,#0d1326 45%,#0b1224);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:clamp(20px,3.6vw,32px);margin:0;line-height:1.1}
+    .pill{display:inline-flex;align-items:center;gap:8px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.35);color:var(--acc);padding:6px 10px;border-radius:999px;font-size:12px}
+    .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .card h2{margin:0 0 8px 0;font-size:18px}
+    .card .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .card .bd{padding:14px 16px}
+    label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px}
+    input,select,textarea{width:100%;background:var(--panel);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:10px 12px;border-radius:12px;outline:none}
+    input[type="checkbox"]{width:auto}
+    textarea{min-height:60px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;color:#0b1224;background:var(--acc);font-weight:700;cursor:pointer}
+    .btn.secondary{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.16)}
+    .btn.warn{background:var(--warn);color:#161616}
+    .btn.ghost{background:transparent;color:var(--sub)}
+    .btn.small{font-size:12px;padding:6px 8px;border-radius:8px}
+    .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .table th{font-size:12px;color:var(--sub);font-weight:600;text-align:right;padding:0 10px}
+    .table td{background:var(--muted);border:1px solid rgba(255,255,255,.06);border-right:none;padding:10px 10px}
+    .table tr td:first-child{border-radius:12px 0 0 12px;border-right:1px solid rgba(255,255,255,.06)}
+    .table tr td:last-child{border-radius:0 12px 12px 0}
+    .chip{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+    .pct{font-weight:800}
+    .pct.good{color:var(--good)}
+    .pct.bad{color:var(--bad)}
+    canvas{width:100%;height:220px}
+    .footer{margin-top:16px;color:var(--sub);font-size:12px}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;background:#0b0f1a;border:1px solid rgba(255,255,255,.1);padding:2px 6px;border-radius:6px}
+
+    .charts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media (max-width:900px){.charts-grid{grid-template-columns:1fr}}
+    .mini h3{margin:0 0 8px 0;font-size:14px;color:var(--sub)}
+    .mini canvas{height:160px}
+    .toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);cursor:pointer}
+    .toggle input{accent-color:#22d3ee}
+
+    /* Sticky bottom toolbar + modal */
+    .sticky-bar{
+      position: fixed; inset-inline:0; bottom:0;
+      background: rgba(17,24,39,.95);
+      border-top:1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(6px);
+      display:flex; gap:8px; padding:8px 12px; justify-content:center; z-index:9999;
+    }
+    .sticky-bar .btn{padding:8px 12px}
+    body{padding-bottom:72px}
+    #installBtnSticky{background:#22d3ee;color:#0b1224;border:none;border-radius:12px;padding:8px 12px;font-weight:700;cursor:pointer}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:10000}
+    .modal .box{background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:12px;max-width:520px;padding:16px}
+    .modal h3{margin:0 0 8px 0}
+    .modal p{margin:0 0 8px 0;color:#94a3b8}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>אימון קליעות לסל · מעקב</h1>
+        <div class="pill">שומר מקומית בדפדפן · ללא התקנה</div>
+      </div>
+      <div class="flex">
+        <button class="btn secondary" id="exportBtn">יצוא JSON</button>
+        <label for="importFile" class="btn secondary" style="cursor:pointer">יבוא</label>
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+        <button class="btn warn" id="resetBtn" title="איפוס מוחק את כל הנתונים">איפוס</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="formTitle">
+        <div class="hd">
+          <h2 id="formTitle">רישום נסיון קליעה</h2>
+          <span class="chip" id="todayTag"></span>
+        </div>
+        <div class="bd">
+          <div class="row">
+            <div>
+              <label for="cat">קטגוריה</label>
+              <select id="cat"></select>
+            </div>
+            <div>
+              <label for="date">תאריך ושעה</label>
+              <input id="date" type="datetime-local" />
+            </div>
+          </div>
+          <div class="row3" style="margin-top:10px">
+            <div>
+              <label for="attempts">ניסיונות</label>
+              <input id="attempts" type="number" min="0" step="1" value="25" />
+            </div>
+            <div>
+              <label for="made">קלע</label>
+              <input id="made" type="number" min="0" step="1" value="0" />
+            </div>
+            <div>
+              <label>אחוז</label>
+              <div id="pctLive" class="pct">0%</div>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label for="notes">הערות (למשל: יד חלשה/עייפות/קצב)</label>
+            <textarea id="notes" placeholder="אופציונלי"></textarea>
+          </div>
+          <div class="flex" style="justify-content:space-between;margin-top:12px">
+            <div class="flex">
+              <button class="btn small ghost" id="quick5">+5 נסיונות</button>
+              <button class="btn small ghost" id="quick10">+10 נסיונות</button>
+              <button class="btn small ghost" id="quickMade">+1 קלע</button>
+            </div>
+            <div class="flex">
+              <button class="btn secondary" id="addSession">הוסף</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="sumTitle">
+        <div class="hd">
+          <h2 id="sumTitle">סיכום לפי קטגוריה</h2>
+          <span class="chip" id="totalChip">סה\"כ: 0/0 · 0%</span>
+        </div>
+        <div class="bd">
+          <table class="table" id="sumTable">
+            <thead>
+              <tr>
+                <th>קטגוריה</th>
+                <th>קלע / ניסיונות</th>
+                <th>אחוז</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div style="margin-top:8px">
+            <canvas id="chart" aria-label="תרשים אחוזים לפי קטגוריה"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px" aria-labelledby="filtersTitle">
+      <div class="hd">
+        <h2 id="filtersTitle">מסננים</h2>
+        <div class="flex">
+          <button id="selectAllCats" class="btn small secondary">בחר הכל</button>
+          <button id="clearAllCats" class="btn small secondary">נקה הכל</button>
+          <button id="resetFilters" class="btn small ghost">איפוס מסננים</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="row">
+          <div>
+            <label for="fromDate">מתאריך</label>
+            <input type="date" id="fromDate" />
+          </div>
+          <div>
+            <label for="toDate">עד תאריך</label>
+            <input type="date" id="toDate" />
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>קטגוריות</label>
+          <div id="catFilters" class="flex"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px" aria-labelledby="catChartsTitle">
+      <div class="hd">
+        <h2 id="catChartsTitle">גרפי שיפור לפי קטגוריה</h2>
+        <span class="chip">אחוזי פגיעה לאורך זמן</span>
+      </div>
+      <div class="bd">
+        <div id="chartsGrid" class="charts-grid"></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px" aria-labelledby="logTitle">
+      <div class="hd">
+        <h2 id="logTitle">יומן אימונים</h2>
+        <div class="flex">
+          <button class="btn secondary" id="printBtn">הדפס/שיתוף PDF</button>
+        </div>
+      </div>
+      <div class="bd">
+        <table class="table" id="logTable">
+          <thead>
+            <tr>
+              <th>תאריך</th>
+              <th>קטגוריה</th>
+              <th>קלע/ניסיונות</th>
+              <th>אחוז</th>
+              <th>הערות</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="footer">
+      טיפ: אפשר להוסיף לאייפון כ\"אפליקציית מסך בית\" דרך <span class="kbd">Share → Add to Home Screen</span>. באנדרואיד דרך <span class="kbd">⋮ → Add to Home screen</span>.
+    </div>
+  </div>
+
+  <!-- Sticky toolbar + modal -->
+  <div class="sticky-bar" role="toolbar" aria-label="פעולות מהירות">
+    <button class="btn secondary" onclick="document.getElementById('exportBtn')?.click()">יצוא JSON</button>
+    <label class="btn secondary" style="cursor:pointer" for="importFile">יבוא</label>
+    <button class="btn warn" onclick="document.getElementById('resetBtn')?.click()">איפוס</button>
+    <button id="installBtnSticky" onclick="triggerInstall()">התקן אפליקציה</button>
+  </div>
+
+  <div id="installFallback" class="modal" onclick="this.style.display='none'">
+    <div class="box" onclick="event.stopPropagation()">
+      <h3>איך מתקינים כאפליקציה?</h3>
+      <p><b>במחשב (Chrome/Edge):</b> ⋮ → More tools → Create shortcut… → סמן \"Open as window\" → Create.</p>
+      <p><b>באנדרואיד (Chrome):</b> ⋮ → Add to Home screen.</p>
+      <p><b>באייפון (Safari):</b> Share → Add to Home Screen.</p>
+      <div style="text-align:left"><button class="btn secondary" onclick="document.getElementById('installFallback').style.display='none'">סגור</button></div>
+    </div>
+  </div>
+
+  <script>
+    const CATEGORIES = [
+      "עונשין","עונשין עם ספרינטים","חצי מרחק עם מסירה עצמי",
+      "חצי מרחק מהמקום","חצי מרחק אוף דריבל","חצי מרחק השלמה רגל רגל"
+    ];
+
+    const els = {
+      cat: document.getElementById('cat'),
+      date: document.getElementById('date'),
+      attempts: document.getElementById('attempts'),
+      made: document.getElementById('made'),
+      pctLive: document.getElementById('pctLive'),
+      notes: document.getElementById('notes'),
+      addSession: document.getElementById('addSession'),
+      sumTable: document.getElementById('sumTable').querySelector('tbody'),
+      totalChip: document.getElementById('totalChip'),
+      logTable: document.getElementById('logTable').querySelector('tbody'),
+      chart: document.getElementById('chart'),
+      todayTag: document.getElementById('todayTag'),
+      exportBtn: document.getElementById('exportBtn'),
+      importFile: document.getElementById('importFile'),
+      resetBtn: document.getElementById('resetBtn'),
+      printBtn: document.getElementById('printBtn'),
+      quick5: document.getElementById('quick5'),
+      quick10: document.getElementById('quick10'),
+      quickMade: document.getElementById('quickMade'),
+      fromDate: document.getElementById('fromDate'),
+      toDate: document.getElementById('toDate'),
+      catFilters: document.getElementById('catFilters'),
+      selectAllCats: document.getElementById('selectAllCats'),
+      clearAllCats: document.getElementById('clearAllCats'),
+      resetFilters: document.getElementById('resetFilters'),
+      chartsGrid: document.getElementById('chartsGrid'),
+    };
+
+    const pad = n => String(n).padStart(2,'0');
+    function toLocalInputValue(d){
+      const dt = new Date(d);
+      dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+      return dt.toISOString().slice(0,16);
+    }
+    function fmtDateTime(d){
+      const x = new Date(d);
+      return `${pad(x.getDate())}.${pad(x.getMonth()+1)}.${x.getFullYear()} ${pad(x.getHours())}:${pad(x.getMinutes())}`
+    }
+    function percent(made,attempts){
+      if(!attempts) return 0;
+      return Math.round((made/attempts)*100);
+    }
+
+    const KEY = 'shooting-tracker-v1';
+    const KEYF = 'shooting-tracker-filters-v1';
+    function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {sessions:[]}; } catch(e){ return {sessions:[]}; } }
+    function save(state){ localStorage.setItem(KEY, JSON.stringify(state)); }
+    function loadFilters(){ try{ return JSON.parse(localStorage.getItem(KEYF)) || null; } catch(e){ return null; } }
+    function saveFilters(){ localStorage.setItem(KEYF, JSON.stringify(filters)); }
+
+    let state = load();
+    let filters = loadFilters() || { from:'', to:'', cats:Object.fromEntries(CATEGORIES.map(c=>[c,true])) };
+
+    function filteredSessions(){
+      const from = filters.from? new Date(filters.from+'T00:00:00') : null;
+      const to = filters.to? new Date(filters.to+'T23:59:59.999') : null;
+      return state.sessions.filter(s=>{
+        if(!filters.cats[s.cat]) return false;
+        const dt = new Date(s.date);
+        if(from && dt < from) return false;
+        if(to && dt > to) return false;
+        return true;
+      });
+    }
+
+    function initCats(){ els.cat.innerHTML = CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join(''); }
+    function initDate(){ const now=new Date(); els.date.value=toLocalInputValue(now); els.todayTag.textContent=fmtDateTime(now); }
+    function initFilterControls(){
+      els.fromDate.value = filters.from || '';
+      els.toDate.value = filters.to || '';
+      els.catFilters.innerHTML = CATEGORIES.map(c=>{
+        const checked = filters.cats[c] ? 'checked' : '';
+        const id = 'f-' + c.replace(/\\s+/g,'-');
+        return `<label class="toggle" for="${id}">
+          <input type="checkbox" id="${id}" data-cat="${c}" ${checked} /> ${c}
+        </label>`;
+      }).join('');
+      els.fromDate.addEventListener('change', ()=>{ filters.from = els.fromDate.value; saveFilters(); render(); });
+      els.toDate.addEventListener('change', ()=>{ filters.to = els.toDate.value; saveFilters(); render(); });
+      els.catFilters.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+        cb.addEventListener('change', (e)=>{ filters.cats[e.target.dataset.cat] = e.target.checked; saveFilters(); render(); });
+      });
+      els.selectAllCats.addEventListener('click', ()=>{ CATEGORIES.forEach(c=>filters.cats[c]=true); saveFilters(); initFilterControls(); render(); });
+      els.clearAllCats.addEventListener('click', ()=>{ CATEGORIES.forEach(c=>filters.cats[c]=false); saveFilters(); initFilterControls(); render(); });
+      els.resetFilters.addEventListener('click', ()=>{ filters = {from:'', to:'', cats:Object.fromEntries(CATEGORIES.map(c=>[c,true]))}; saveFilters(); initFilterControls(); render(); });
+    }
+
+    function livePct(){
+      const a = Number(els.attempts.value||0);
+      const m = Number(els.made.value||0);
+      const p = percent(m,a);
+      els.pctLive.textContent = `${p}%`;
+      els.pctLive.className = 'pct ' + (p>=70? 'good' : (p<50? 'bad' : ''));
+    }
+    document.getElementById('attempts').addEventListener('input', livePct);
+    document.getElementById('made').addEventListener('input', livePct);
+    document.getElementById('addSession').addEventListener('click', ()=>{
+      const entry = {
+        id: crypto.randomUUID(),
+        date: new Date(els.date.value || new Date()).toISOString(),
+        cat: els.cat.value,
+        attempts: Number(els.attempts.value||0),
+        made: Number(els.made.value||0),
+        notes: els.notes.value.trim()
+      };
+      if(entry.attempts < entry.made){ alert('מספר הקלע לא יכול להיות גדול ממספר הניסיונות'); return; }
+      state.sessions.push(entry); save(state); render();
+      els.notes.value=''; els.made.value='0'; els.attempts.value='25'; livePct(); els.cat.focus();
+    });
+
+    function removeSession(id){ state.sessions = state.sessions.filter(x=>x.id!==id); save(state); render(); }
+
+    function renderLog(){
+      const rows = filteredSessions().slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).map(s=>{
+        const p = percent(s.made,s.attempts);
+        const cls = p>=70? 'good': (p<50? 'bad':'');
+        return `<tr>
+          <td>${fmtDateTime(s.date)}</td>
+          <td><span class="chip">${s.cat}</span></td>
+          <td>${s.made} / ${s.attempts}</td>
+          <td class="pct ${cls}">${p}%</td>
+          <td>${s.notes? s.notes.replace(/</g,'&lt;') : ''}</td>
+          <td style="text-align:left">
+            <button class="btn small secondary" onclick="editEntry('${s.id}')">עריכה</button>
+            <button class="btn small warn" onclick="removeSession('${s.id}')">מחק</button>
+          </td>
+        </tr>`;
+      }).join('');
+      els.logTable.innerHTML = rows || `<tr><td colspan="6" style="text-align:center;color:var(--sub)">אין נתונים בטווח/קטגוריות שנבחרו.</td></tr>`;
+    }
+
+    function renderSummary(){
+      const byCat = Object.fromEntries(CATEGORIES.map(c=>[c,{made:0,attempts:0}]));
+      let totalMade=0,totalAttempts=0;
+      for(const s of filteredSessions()){ byCat[s.cat].made += s.made; byCat[s.cat].attempts += s.attempts; totalMade += s.made; totalAttempts += s.attempts; }
+      els.sumTable.innerHTML = CATEGORIES.map(c=>{
+        const {made,attempts} = byCat[c]; const p = percent(made,attempts);
+        const cls = p>=70? 'good': (p<50? 'bad':'');
+        return `<tr><td>${c}</td><td>${made} / ${attempts}</td><td class="pct ${cls}">${p}%</td></tr>`
+      }).join('');
+      const tp = percent(totalMade,totalAttempts);
+      els.totalChip.textContent = `סה\"כ: ${totalMade}/${totalAttempts} · ${tp}%`;
+      drawChart(byCat);
+    }
+
+    function drawChart(byCat){
+      const ctx = els.chart.getContext('2d');
+      const w = els.chart.clientWidth; const h = els.chart.clientHeight;
+      const dpr = window.devicePixelRatio||1; els.chart.width=w*dpr; els.chart.height=h*dpr; ctx.scale(dpr,dpr);
+      ctx.clearRect(0,0,w,h);
+      const cats = CATEGORIES;
+      const vals = cats.map(c=>{ const {made,attempts} = byCat[c]; return attempts? Math.round((made/attempts)*100) : 0; });
+      const max = 100; const padX=36, padY=24; const bw = (w - padX*2) / cats.length - 12;
+      ctx.globalAlpha=0.5; ctx.strokeStyle='rgba(255,255,255,.2)';
+      for(let y=0;y<=100;y+=20){ const yy = padY + (h-padY*2)*(1-y/max); ctx.beginPath(); ctx.moveTo(padX,yy); ctx.lineTo(w-padX,yy); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.5)'; ctx.font='12px system-ui'; ctx.fillText(`${y}%`,6,yy+4); }
+      ctx.globalAlpha=1;
+      cats.forEach((c,i)=>{
+        const v = vals[i];
+        const x = padX + i*((w-padX*2)/cats.length) + 6;
+        const y = padY + (h-padY*2)*(1 - v/max);
+        const hh = (h-padY*2)*(v/max);
+        const grd = ctx.createLinearGradient(0,y,0,y+hh); grd.addColorStop(0,'#22d3ee'); grd.addColorStop(1,'#0ea5e9');
+        ctx.fillStyle = grd; ctx.fillRect(x,y,bw,hh);
+        ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='12px system-ui'; ctx.textAlign='center'; ctx.fillText(`${v}%`, x+bw/2, y-6);
+      });
+      ctx.fillStyle='rgba(255,255,255,.75)'; ctx.font='11px system-ui'; ctx.textAlign='center';
+      cats.forEach((c,i)=>{
+        const x = padX + i*((w-padX*2)/cats.length) + 6 + bw/2;
+        const lines = wrapText(c, 14);
+        lines.forEach((ln,li)=>{ ctx.fillText(ln, x, h - padY + 14*li); });
+      });
+    }
+    function wrapText(t,max){ const words=t.split(' '); const lines=[]; let cur=''; for(const w of words){ if((cur+' '+w).trim().length>max){ lines.push(cur); cur=w; } else { cur=(cur?cur+' ':'')+w; } } if(cur) lines.push(cur); return lines; }
+
+    function renderCategoryCharts(){
+      const host = els.chartsGrid; if(!host) return;
+      host.innerHTML = CATEGORIES.filter(c=>filters.cats[c]).map((c,i)=>`<div class="mini card" style="padding:12px"><h3>${c}</h3><canvas id="mini-${i}"></canvas></div>`).join('');
+      let idx=0;
+      CATEGORIES.forEach((c)=>{
+        if(!filters.cats[c]) return;
+        const canvas=document.getElementById(`mini-${idx}`); idx++;
+        const series = filteredSessions().filter(s=>s.cat===c).sort((a,b)=> new Date(a.date)-new Date(b.date)).map(s=>({t:new Date(s.date), p:percent(s.made,s.attempts)}));
+        drawLineChart(canvas,series);
+      });
+      if(!host.innerHTML){ host.innerHTML = '<div style="color:var(--sub)">לא נבחרו קטגוריות להצגה.</div>'; }
+    }
+    function drawLineChart(canvas, series){
+      const ctx = canvas.getContext('2d'); const w=canvas.clientWidth; const h=canvas.clientHeight;
+      const dpr=window.devicePixelRatio||1; canvas.width=w*dpr; canvas.height=h*dpr; ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
+      const padX=36,padY=20,max=100; ctx.globalAlpha=0.5; ctx.strokeStyle='rgba(255,255,255,.15)';
+      for(let y=0;y<=100;y+=25){ const yy=padY+(h-padY*2)*(1-y/max); ctx.beginPath(); ctx.moveTo(padX,yy); ctx.lineTo(w-padX,yy); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.6)'; ctx.font='10px system-ui'; ctx.fillText(`${y}%`,6,yy+3); }
+      ctx.globalAlpha=1;
+      if(!series.length){ ctx.fillStyle='rgba(255,255,255,.5)'; ctx.font='12px system-ui'; ctx.textAlign='center'; ctx.fillText('אין נתונים בטווח', w/2, h/2); return; }
+      const step=(w-padX*2)/Math.max(1,series.length-1); const xAt=i=>padX+i*step; const yAt=p=>padY+(h-padY*2)*(1-p/max);
+      ctx.beginPath(); series.forEach((pt,i)=>{ const x=xAt(i), y=yAt(pt.p); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      const grad=ctx.createLinearGradient(0,padY,0,h-padY); grad.addColorStop(0,'#22d3ee'); grad.addColorStop(1,'#0ea5e9');
+      ctx.strokeStyle=grad; ctx.lineWidth=2; ctx.stroke();
+      series.forEach((pt,i)=>{ const x=xAt(i), y=yAt(pt.p); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fillStyle='#22d3ee'; ctx.fill(); });
+      const fmt=d=>`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`; ctx.fillStyle='rgba(255,255,255,.75)'; ctx.font='10px system-ui'; ctx.textAlign='center';
+      const first=series[0].t, last=series[series.length-1].t; ctx.fillText(fmt(first), padX, h-padY+12); if(series.length>1) ctx.fillText(fmt(last), w-padX, h-padY+12);
+    }
+
+    // Export/Import/Print/Reset
+    document.getElementById('exportBtn').addEventListener('click',()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `shooting-data-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
+    });
+    document.getElementById('importFile').addEventListener('change', async (e)=>{
+      const file=e.target.files[0]; if(!file) return;
+      try{ const text=await file.text(); const obj=JSON.parse(text); if(!obj || !Array.isArray(obj.sessions)) throw new Error('קובץ לא תקין');
+        state=obj; save(state); render(); alert('הנתונים נטענו בהצלחה');
+      }catch(err){ alert('נכשל ביבוא: '+err.message); } e.target.value='';
+    });
+    document.getElementById('resetBtn').addEventListener('click',()=>{ if(confirm('למחוק את כל הנתונים?')){ state={sessions:[]}; save(state); render(); } });
+    document.getElementById('printBtn')?.addEventListener('click',()=>{ window.print(); });
+
+    // Edit
+    window.editEntry = function(id){
+      const s=state.sessions.find(x=>x.id===id); if(!s) return;
+      const made=prompt('עדכן קלע', s.made); const attempts=prompt('עדכן ניסיונות', s.attempts); const notes=prompt('עדכן הערות', s.notes||'');
+      if(made===null || attempts===null) return; const m=Number(made), a=Number(attempts); if(a<m){ alert('קלע לא יכול לעלות על ניסיונות'); return; }
+      s.made=m; s.attempts=a; s.notes=notes; save(state); render();
+    }
+
+    function render(){ renderLog(); renderSummary(); renderCategoryCharts(); }
+
+    // PWA registration + permanent install button
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+    let deferredPrompt=null;
+    window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; });
+    async function triggerInstall(){
+      if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; }
+      else { document.getElementById('installFallback').style.display='flex'; }
+    }
+
+    // Boot
+    function boot(){ initCats(); initDate(); initFilterControls(); livePct(); render(); }
+    if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
+  </script>
+</body>
+</html>
